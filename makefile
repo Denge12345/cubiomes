@@ -7,10 +7,10 @@ override CFLAGS += -Wall -Wextra -fwrapv
 ifeq ($(OS),Windows_NT)
 	override CFLAGS += -D_WIN32
 	CC = gcc
-	RM = del
+	RM = del /Q
 else
 	override LDFLAGS += -pthread
-	#RM = rm
+	RM = rm -f
 endif
 
 .PHONY : all debug release native libcubiomes clean
@@ -29,37 +29,25 @@ release: CFLAGS += -fPIC
 #debug: CFLAGS += -fsanitize=undefined
 endif
 
+# The library was restructured into sub-directories (features, loot, ...),
+# so collect the translation units instead of listing them manually.
+SOURCES = \
+	$(filter-out tests.c,$(wildcard *.c)) \
+	$(wildcard features/*.c) \
+	$(wildcard loot/*.c) \
+	$(wildcard loot/cjson/*.c) \
+	$(wildcard loot/loot_tables/*.c) \
+	$(wildcard loot/loot_tables/chests/*.c) \
+	$(wildcard loot/loot_tables/chests/trial_chambers/*.c) \
+	$(wildcard loot/loot_tables/barrels/*.c)
 
-libcubiomes: noise.o biomes.o layers.o biomenoise.o generator.o finders.o util.o quadbase.o
+OBJECTS = $(SOURCES:.c=.o)
+
+libcubiomes: $(OBJECTS)
 	$(AR) $(ARFLAGS) libcubiomes.a $^
 
-finders.o: finders.c finders.h
-	$(CC) -c $(CFLAGS) $<
-
-generator.o: generator.c generator.h
-	$(CC) -c $(CFLAGS) $<
-
-biomenoise.o: biomenoise.c
-	$(CC) -c $(CFLAGS) $<
-
-biometree.o: biometree.c
-	$(CC) -c $(CFLAGS) $<
-
-layers.o: layers.c layers.h
-	$(CC) -c $(CFLAGS) $<
-
-biomes.o: biomes.c biomes.h
-	$(CC) -c $(CFLAGS) $<
-
-noise.o: noise.c noise.h
-	$(CC) -c $(CFLAGS) $<
-
-util.o: util.c util.h
-	$(CC) -c $(CFLAGS) $<
-
-quadbase.o: quadbase.c quadbase.h
-	$(CC) -c $(CFLAGS) $<
+%.o: %.c
+	$(CC) -c $(CFLAGS) $< -o $@
 
 clean:
-	$(RM) *.o *.a
-
+	-$(RM) $(OBJECTS) libcubiomes.a
